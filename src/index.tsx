@@ -20,7 +20,18 @@ const tui: TuiPlugin = async (api) => {
       // are no subagents.
       app_bottom: (ctx) => {
         const tone = ctx.theme.current;
-        return <Dock store={store} colors={{ text: tone.text, muted: tone.textMuted, accent: tone.primary }} />;
+            return (
+              <Dock
+                store={store}
+                colors={{
+                  text: tone.text,
+                  muted: tone.textMuted,
+                  accent: tone.primary,
+                  border: tone.border,
+                  panel: tone.backgroundPanel,
+                }}
+              />
+            );
       },
     },
   };
