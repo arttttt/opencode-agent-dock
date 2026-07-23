@@ -5,12 +5,20 @@
 // subagents (renders nothing — no empty-state text).
 
 import { For, Show, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
+import type { RGBA } from "@opentui/core";
 import type { SubagentStore } from "../ports.js";
 import { toRow } from "../domain.js";
 import { LIMITS } from "../constants.js";
 
+export type DockColors = {
+  text: RGBA | string;
+  muted: RGBA | string;
+  accent: RGBA | string;
+};
+
 export type DockProps = {
   store: SubagentStore;
+  colors: DockColors;
 };
 
 export function Dock(props: DockProps): JSX.Element {
@@ -32,9 +40,13 @@ export function Dock(props: DockProps): JSX.Element {
 
   return (
     <Show when={rows().length > 0}>
-      <box>
+      <box flexDirection="column" paddingLeft={1} paddingRight={1}>
         <For each={rows()}>
-          {(row) => <text>{`${row.glyph} ${row.label}${row.elapsed ? "  " + row.elapsed : ""}`}</text>}
+          {(row) => (
+            <text fg={row.subagent.status === "running" ? props.colors.accent : props.colors.muted}>
+              {`${row.glyph} ${row.label}${row.elapsed ? "  " + row.elapsed : ""}`}
+            </text>
+          )}
         </For>
       </box>
     </Show>

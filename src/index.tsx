@@ -1,11 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 // Composition root — the only place that knows about concrete adapters and the
 // opencode TUI API. Wires dependencies and contributes the `app_bottom` slot.
-// (Everything else depends on ports.)
-//
-// Interaction (arrow-key focus handoff between the host prompt and this panel)
-// is intentionally not wired here yet — see README; it needs a decision on the
-// achievable model via the TUI plugin API.
 
 import type { TuiPlugin, TuiPluginModule, TuiSlotPlugin } from "@opencode-ai/plugin/tui";
 import { PLUGIN_ID } from "./constants.js";
@@ -18,12 +13,26 @@ const tui: TuiPlugin = async (api) => {
   const store = createSubagentStore(api, log);
   log.info("agent-dock initialized");
 
+  // One-shot diagnostic: confirms whether the host actually invokes the
+  // app_bottom slot render. Combined with the per-refresh `children` log this
+  // isolates "data ok but render not called" from "render called but invisible".
+  let slotRenderLogged = false;
+
   const slot: TuiSlotPlugin = {
     slots: {
-      // `app_bottom` = persistent strip below the active route (visible in the
-      // session view). The render reads the store live; Dock hides itself when
-      // there are no subagents.
-      app_bottom: () => <Dock store={store} />,
+      app_bottom: (ctx) => {
+        if (!slotRenderLogged) {
+          slotRenderLogged = true;
+          log.info(`app_bottom slot render invoked; rows=${store.snapshot().length}`);
+        }
+        const tone = ctx.theme.current;
+        return (
+          <Dock
+            store={store}
+            colors={{ text: tone.text, muted: tone.textMuted, accent: tone.primary }}
+          />
+        );
+      },
     },
   };
   api.slots.register(slot);
