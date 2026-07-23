@@ -10,17 +10,6 @@ export const SERVICE = "agent-dock";
  */
 export const SLOT_NAME = "app_bottom";
 
-/** Plugin-scoped keymap mode, pushed while the dock holds focus. */
-export const DOCK_MODE = "agent-dock";
-
-export const KEY = {
-  focus: "alt+a",
-  up: "k",
-  down: "j",
-  open: "return",
-  exit: "escape",
-} as const;
-
 export const LIMITS = {
   labelMax: 48,
   maxRows: 8,
