@@ -30,6 +30,7 @@ const tui: TuiPlugin = async (api) => {
           <Dock
             store={store}
             colors={{ text: tone.text, muted: tone.textMuted, accent: tone.primary }}
+            log={log.info}
           />
         );
       },
