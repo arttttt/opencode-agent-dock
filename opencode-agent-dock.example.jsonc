@@ -1,0 +1,10 @@
+// OpenCode Agent Dock — Claude-Code-style bottom panel for subagents.
+//
+// This is a TUI plugin, so it is configured in tui.json (NOT opencode.json).
+// Merge this `plugin` entry into ~/.config/opencode/tui.json (user) or
+// .opencode/tui.json (project), then restart OpenCode.
+{
+  // "plugin": ["opencode-agent-dock"]
+  // or, for local development:
+  // "plugin": [["file:///Users/you/Projects/opencode-agent-dock/src/index.tsx"]]
+}

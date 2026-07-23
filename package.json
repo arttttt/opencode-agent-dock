@@ -1,0 +1,68 @@
+{
+  "name": "opencode-agent-dock",
+  "version": "0.1.0",
+  "description": "OpenCode TUI plugin — a Claude-Code-style bottom panel that groups the current session's subagents, with select / switch / open-session.",
+  "type": "module",
+  "exports": {
+    "./tui": {
+      "import": "./src/index.tsx"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tui",
+    "subagent",
+    "agents",
+    "panel",
+    "dock"
+  ],
+  "author": "Artem Bambalov <artem-bambalov@yandex.ru>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arttttt/opencode-agent-dock.git"
+  },
+  "homepage": "https://github.com/arttttt/opencode-agent-dock#readme",
+  "bugs": {
+    "url": "https://github.com/arttttt/opencode-agent-dock/issues"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.18.4",
+    "@opencode-ai/sdk": "^1.18.4"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.4.5",
+    "@opentui/keymap": ">=0.4.5",
+    "@opentui/solid": ">=0.4.5"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/core": { "optional": true },
+    "@opentui/keymap": { "optional": true },
+    "@opentui/solid": { "optional": true }
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.4",
+    "@opencode-ai/sdk": "^1.18.4",
+    "@opentui/core": ">=0.4.5",
+    "@opentui/keymap": ">=0.4.5",
+    "@opentui/solid": ">=0.4.5",
+    "@types/bun": "latest",
+    "prettier": "^3.8.1",
+    "solid-js": "^1.9.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "opencode": "^1.18.0"
+  }
+}
