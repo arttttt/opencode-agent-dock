@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
-// View — the bottom-panel render. A Solid component contributed to the
-// `app_bottom` slot. Reads the SubagentStore and derives rows via the pure
-// domain `toRow`. Hides entirely when there are no running subagents.
+// View — the bottom-panel render, Claude-Code-style: no bordered panel, just
+// clean text rows aligned under the prompt. Status glyph in accent, the rest
+// muted. Each row is clickable to open that subagent's session.
 //
 // Reactivity: the memo READS the version signal (`version()`) so Solid tracks
 // it. (Calling the setter inside the memo does not register a dependency — the
@@ -17,13 +17,12 @@ export type DockColors = {
   text: RGBA | string;
   muted: RGBA | string;
   accent: RGBA | string;
-  border: RGBA | string;
-  panel: RGBA | string;
 };
 
 export type DockProps = {
   store: SubagentStore;
   colors: DockColors;
+  open?: (sessionId: string) => void;
 };
 
 export function Dock(props: DockProps): JSX.Element {
@@ -44,21 +43,19 @@ export function Dock(props: DockProps): JSX.Element {
 
   return (
     <Show when={rows().length > 0}>
-      <box
-        flexDirection="column"
-        width="100%"
-        border
-        borderColor={props.colors.border}
-        backgroundColor={props.colors.panel}
-        paddingLeft={1}
-        paddingRight={1}
-      >
-        <text fg={props.colors.muted}>{`Subagents \u00b7 ${rows().length}`}</text>
+      <box flexDirection="column" paddingLeft={1} paddingRight={1}>
         <For each={rows()}>
           {(row) => (
-            <text fg={row.subagent.status === "running" ? props.colors.accent : props.colors.text}>
-              {`${row.glyph} ${row.label}${row.elapsed ? "  " + row.elapsed : ""}`}
-            </text>
+            <box flexDirection="row" onMouseUp={() => props.open?.(row.subagent.id)}>
+              <text>
+                <span style={{ fg: row.subagent.status === "running" ? props.colors.accent : props.colors.muted }}>
+                  {row.glyph}
+                </span>
+                <span style={{ fg: props.colors.muted }}>
+                  {` ${row.label}${row.elapsed ? "  " + row.elapsed : ""}`}
+                </span>
+              </text>
+            </box>
           )}
         </For>
       </box>

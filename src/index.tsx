@@ -16,22 +16,16 @@ const tui: TuiPlugin = async (api) => {
   const slot: TuiSlotPlugin = {
     slots: {
       // `app_bottom` = persistent strip below the active route (visible in the
-      // session view). Render reads the store live; Dock hides itself when there
-      // are no subagents.
+      // session view). Claude-Code-style: plain rows, no panel chrome.
       app_bottom: (ctx) => {
         const tone = ctx.theme.current;
-            return (
-              <Dock
-                store={store}
-                colors={{
-                  text: tone.text,
-                  muted: tone.textMuted,
-                  accent: tone.primary,
-                  border: tone.border,
-                  panel: tone.backgroundPanel,
-                }}
-              />
-            );
+        return (
+          <Dock
+            store={store}
+            colors={{ text: tone.text, muted: tone.textMuted, accent: tone.primary }}
+            open={(sessionId) => api.route.navigate("session", { sessionID: sessionId })}
+          />
+        );
       },
     },
   };
