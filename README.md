@@ -62,24 +62,6 @@ The toggle key (`<leader>v`) can be remapped in `tui.json` under the `agent-dock
 
 > Why a toggle and not bare `↓`? In the parent session the prompt textarea captures arrow keys, and a plugin cannot blur the host prompt. `keymap.intercept` runs before the textarea, so once the dock is focused the arrows are ours. `↓` itself is also the prompt's history key, which made it an unreliable trigger.
 
-## Architecture
-
-Clean Architecture — dependencies point inward, the domain is pure, and the only place that knows about the opencode SDK / TUI API is the composition root + adapters.
-
-```
-src/
-  domain.ts                       pure: Subagent, selection math, formatting (unit-tested)
-  ports.ts                        SubagentStore, Logger contracts
-  sdk.ts                          SDK Session/SessionStatus -> domain Subagent
-  constants.ts                    plugin id, slot name, limits
-  adapters/
-    opencode-subagent-store.ts    SubagentStore via client.session.children + events
-    opencode-logger.ts            Logger via client.app.log
-  view/
-    Dock.tsx                      Solid render into the app_bottom slot
-  index.tsx                       composition root: slot + inline nav (intercept)
-```
-
 ## Develop
 
 ```sh
