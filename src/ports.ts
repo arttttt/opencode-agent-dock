@@ -8,15 +8,13 @@ import type { Subagent } from "./domain.js";
 export interface SubagentStore {
   /** The session whose subagents we render (the active session route). */
   readonly parentSessionId: string | undefined;
+  /** When the active route is a subagent session — its id, so the panel can
+   * highlight the one currently in focus. Undefined in the parent session. */
+  readonly activeId: string | undefined;
   /** Snapshot of subagents, already sorted and capped for display. */
   snapshot(): Subagent[];
   /** Subscribe to store changes; returns an unsubscribe function. */
   onChange(handler: () => void): () => void;
-}
-
-/** Opens a session view — used to "look inside" a selected subagent. */
-export interface SessionNavigator {
-  open(sessionId: string): void;
 }
 
 export interface Logger {

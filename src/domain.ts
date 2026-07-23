@@ -1,5 +1,4 @@
 // Domain — pure policy. No IO, no SDK, no Solid. Fully unit-testable.
-// Depends only on its own types. This is the stable core everything else serves.
 
 export type SubagentStatus = "running" | "idle" | "done" | "error";
 
@@ -10,6 +9,7 @@ export type Subagent = {
   status: SubagentStatus;
   startedAt: number;
   model?: string;
+  tokens?: number;
 };
 
 /** View-model row derived from a Subagent at a point in time. */
@@ -17,7 +17,7 @@ export type DockRow = {
   subagent: Subagent;
   glyph: string;
   label: string;
-  elapsed: string;
+  meta: string;
 };
 
 const STATUS_GLYPH: Record<SubagentStatus, string> = {
@@ -34,18 +34,11 @@ const STATUS_RANK: Record<SubagentStatus, number> = {
   error: 3,
 };
 
-/** Order for display: active work first, then idle, then terminal; newest first within a group. */
 export function sortSubagents(list: readonly Subagent[]): Subagent[] {
   return [...list].sort((a, b) => {
     const r = STATUS_RANK[a.status] - STATUS_RANK[b.status];
     return r !== 0 ? r : b.startedAt - a.startedAt;
   });
-}
-
-/** Wrap-around cursor move over a list of the given length (0-safe). */
-export function moveSelection(index: number, length: number, delta: number): number {
-  if (length <= 0) return 0;
-  return (((index + delta) % length) + length) % length;
 }
 
 export function clampSelection(index: number, length: number): number {
@@ -65,6 +58,12 @@ export function formatElapsed(startedAt: number, now: number = Date.now()): stri
   return `${hours}h ${String(minutes % 60).padStart(2, "0")}m`;
 }
 
+export function formatTokens(tokens: number | undefined): string {
+  if (tokens === undefined || tokens <= 0) return "";
+  if (tokens < 1000) return `${tokens}`;
+  return `${(tokens / 1000).toFixed(1)}k`;
+}
+
 export function truncate(text: string, max: number): string {
   const trimmed = text.trim();
   if (trimmed.length <= max) return trimmed;
@@ -76,10 +75,13 @@ export function isTerminal(status: SubagentStatus): boolean {
 }
 
 export function toRow(subagent: Subagent, now: number, labelMax: number): DockRow {
+  const meta: string[] = [];
+  if (!isTerminal(subagent.status)) meta.push(formatElapsed(subagent.startedAt, now));
+  if (subagent.tokens !== undefined) meta.push(formatTokens(subagent.tokens));
   return {
     subagent,
     glyph: STATUS_GLYPH[subagent.status],
     label: truncate(subagent.title || subagent.id, labelMax),
-    elapsed: isTerminal(subagent.status) ? "" : formatElapsed(subagent.startedAt, now),
+    meta: meta.join(" \u00b7 "),
   };
 }

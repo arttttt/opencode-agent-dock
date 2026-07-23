@@ -1,10 +1,12 @@
 // Adapter — SubagentStore backed by the opencode TUI state + client.
 //
-// Subagents are child sessions of the active parent. Discovery uses
-// `client.session.children({ sessionID })`, refreshed on an interval and on
-// session lifecycle events. Only sessions that are ACTIVELY RUNNING (busy) are
-// shown — finished/idle/cancelled/archived ones are dropped so the panel
-// reflects "currently working subagents" and clears itself on cancel.
+// Two regimes:
+//   - Parent session (route has no parentID): list its RUNNING children — the
+//     at-a-glance roster for the inline dock navigation.
+//   - Subagent session (route has parentID): keep the panel up with the ONE
+//     subagent currently in focus (so navigating into a subagent does not hide
+//     the panel; native left/right between siblings updates it). `activeId`
+//     exposes that focused id for highlighting.
 
 import type { Session } from "@opencode-ai/sdk/v2";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
@@ -25,19 +27,12 @@ type ChildrenClient = {
 };
 
 function extractSessions(result: unknown): Session[] {
-  if (Array.isArray(result)) return result as Session[];
   const data = (result as { data?: unknown } | null | undefined)?.data;
-  if (Array.isArray(data)) return data as Session[];
-  if (data && typeof data === "object") {
-    const obj = data as Record<string, unknown>;
-    if (Array.isArray(obj["sessions"])) return obj["sessions"] as Session[];
-    if (Array.isArray(obj["children"])) return obj["children"] as Session[];
-  }
-  return [];
+  return Array.isArray(data) ? (data as Session[]) : [];
 }
 
 function isArchived(session: Session): boolean {
-  const archived = (session as Session & { time?: { archived?: number } }).time?.archived;
+  const archived = session.time.archived;
   return typeof archived === "number" && archived > 0;
 }
 
@@ -45,47 +40,51 @@ export function createSubagentStore(api: TuiPluginApi, log: Logger): SubagentSto
   const client = api.client as unknown as ChildrenClient;
   const listeners = new Set<() => void>();
   let cache: Subagent[] = [];
-  let lastSig = "";
+  let activeId: string | undefined;
 
   const emit = (): void => {
     for (const handler of listeners) handler();
   };
 
-  const resolveParent = (): string | undefined => {
+  const resolveCurrent = (): string | undefined => {
     const current = api.route.current as { name: string; params?: { sessionID?: string } };
     return current.name === "session" ? current.params?.sessionID : undefined;
   };
 
   const refresh = async (): Promise<void> => {
-    const parent = resolveParent();
-    if (!parent) {
-      if (cache.length !== 0) {
+    const currentId = resolveCurrent();
+    if (!currentId) {
+      if (cache.length !== 0 || activeId !== undefined) {
         cache = [];
-        lastSig = "";
+        activeId = undefined;
         emit();
       }
       return;
     }
+    const session = api.state.session.get(currentId);
+    if (!session) {
+      return;
+    }
     try {
-      const result = await client.session.children({ sessionID: parent });
-      const sessions = extractSessions(result);
-      const visible = sortSubagents(
-        sessions
-          .filter((session) => !isArchived(session))
-          .map((session) => projectSubagent(session, api.state.session.status(session.id)))
-          .filter((subagent) => subagent.status === "running"),
-      ).slice(0, LIMITS.maxRows);
-
-      const sig = visible.map((s) => `${s.id.slice(-4)}:${s.status}`).join(",") || "-";
-      if (sig !== lastSig) {
-        lastSig = sig;
-        log.info(`children parent=${parent.slice(0, 8)} parsed=${sessions.length} running=${visible.length} [${sig}]`);
+      if (session.parentID) {
+        // Inside a subagent: pin the panel to the one in focus.
+        cache = [projectSubagent(session, api.state.session.status(currentId))];
+        activeId = currentId;
+      } else {
+        // Parent session: list running children.
+        const result = await client.session.children({ sessionID: currentId });
+        const sessions = extractSessions(result);
+        cache = sortSubagents(
+          sessions
+            .filter((item) => !isArchived(item))
+            .map((item) => projectSubagent(item, api.state.session.status(item.id)))
+            .filter((subagent) => subagent.status === "running"),
+        ).slice(0, LIMITS.maxRows);
+        activeId = undefined;
       }
-
-      cache = visible;
       emit();
     } catch (error) {
-      log.error(`children fetch failed: ${error instanceof Error ? error.message : String(error)}`);
+      log.error(`dock refresh failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -110,7 +109,10 @@ export function createSubagentStore(api: TuiPluginApi, log: Logger): SubagentSto
 
   return {
     get parentSessionId(): string | undefined {
-      return resolveParent();
+      return resolveCurrent();
+    },
+    get activeId(): string | undefined {
+      return activeId;
     },
     snapshot(): Subagent[] {
       return cache;
