@@ -1,10 +1,15 @@
-// OpenCode Agent Dock — Claude-Code-style bottom panel for subagents.
+// opencode-agent-dock — TUI plugin.
 //
-// This is a TUI plugin, so it is configured in tui.json (NOT opencode.json).
-// Merge this `plugin` entry into ~/.config/opencode/tui.json (user) or
-// .opencode/tui.json (project), then restart OpenCode.
+// TUI plugins are configured in tui.json (NOT opencode.json). Merge this entry
+// into ~/.config/opencode/tui.json (user) or .opencode/tui.json (project),
+// then restart OpenCode.
 {
-  // "plugin": ["opencode-agent-dock"]
-  // or, for local development:
+  "$schema": "https://opencode.ai/tui.json",
+  "plugin": ["opencode-agent-dock"]
+
+  // local development (file plugin, no npm):
   // "plugin": [["file:///Users/you/Projects/opencode-agent-dock/src/index.tsx"]]
+
+  // remap the focus toggle to another key if you like:
+  // "keybinds": { "agent-dock.toggle": "<leader>d" }
 }

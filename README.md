@@ -1,102 +1,98 @@
 # opencode-agent-dock
 
-> Status: **skeleton / work-in-progress**. Architecture and wiring are in place;
-> the verify-items below remain before it renders live subagents correctly.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![OpenCode Plugin](https://img.shields.io/badge/OpenCode-Plugin-green.svg)](https://opencode.ai)
+[![npm version](https://img.shields.io/npm/v/opencode-agent-dock.svg)](https://www.npmjs.com/package/opencode-agent-dock)
+[![GitHub repo](https://img.shields.io/badge/repo-arttttt%2Fopencode--agent--dock-181717?logo=github)](https://github.com/arttttt/opencode-agent-dock)
 
-An [OpenCode](https://opencode.ai) **TUI plugin** that adds a **Claude-Code-style
-bottom panel** grouping the current session's **subagents** — with select,
-switch, and open-session. Not in the right sidebar: rendered in the `app_bottom`
-slot, which sits below the active route in the session view.
+An [OpenCode](https://opencode.ai) **TUI plugin** that adds a **Claude-Code-style bottom panel** of your running **subagents** — visible at a glance under the prompt, with inline keyboard navigation to browse them collapsed and open any one.
+
+Subagents normally only surface inline in the chat, and the chat scrolls away from where they were spawned. `opencode-agent-dock` keeps the active session's subagents pinned to the bottom of the screen, each with its status, elapsed time and token spend.
+
+## How it works
 
 ```
-▸ ● general-purpose  Verify error-tile reactivity and guards   3m 25s
-  ○ explore          Audit round-3 test quality                 45s
-  ✓ librarian        Lookup JWT docs
+active session route
+  ↓
+resolve current session
+  ├─ parent session → client.session.children() → keep the RUNNING ones
+  └─ subagent session → pin the one currently in focus (panel stays up)
+  ↓
+app_bottom slot renders the roster:  ● title  elapsed · tokens
+  ↓
+navigation: keymap.intercept catches ↑/↓/Enter BEFORE the prompt textarea
+            (the same mechanism opencode uses for copy-on-select), so while the
+            dock is focused the prompt is "locked" and arrows move the cursor
 ```
 
-## Why
+## Features
 
-Subagents only surface inside the chat, and the chat scrolls away from where
-they were spawned. The existing opencode subagent plugins put their list in the
-**right sidebar** and are heavy. This plugin targets the **bottom** (like Claude
-Code's agent panel) and stays as a single lean plugin.
+- **Persistent bottom panel** — running subagents stay visible under the prompt (Claude-Code-style: plain rows, no panel chrome).
+- **Per-subagent telemetry** — status glyph, elapsed time and total token usage on every row.
+- **Inline keyboard navigation** — browse the list collapsed, `Enter` opens the selected subagent's session.
+- **Stays visible inside a subagent** — the focused subagent is highlighted; native `←/→` between siblings updates it live.
+- **Self-cleaning** — finished/cancelled subagents drop out of the panel automatically; it hides when there are none.
+- **Escape stays native** — `Esc` is never hijacked, so it still cancels subagents.
 
 ## Install
 
-TUI plugins are configured in `tui.json`. Add the plugin, then restart OpenCode:
+This is a **TUI plugin**, so it is configured in `tui.json` (not `opencode.json`):
 
 ```jsonc
-// ~/.config/opencode/tui.json
+// ~/.config/opencode/tui.json  (user)  or  .opencode/tui.json  (project)
 {
+  "$schema": "https://opencode.ai/tui.json",
   "plugin": ["opencode-agent-dock"]
 }
 ```
 
-Local development:
-
-```jsonc
-{
-  "plugin": [["file:///absolute/path/to/opencode-agent-dock/src/index.tsx"]]
-}
-```
+Restart OpenCode after adding it.
 
 ## Keybindings
 
 | Key | Action |
 | --- | --- |
-| `alt+a` | Focus the dock |
-| `k` / `j` | Previous / next subagent |
-| `enter` | Open the selected subagent's session |
-| `esc` | Leave the dock |
+| `ctrl+x` `v` &nbsp;— or `/subagents` | Focus the dock (toggle) |
+| `↑` / `↓` | Previous / next subagent |
+| `Enter` | Open the selected subagent's session |
+| `↑` from the first row, or `ctrl+x` `v` again | Leave the dock |
+| `Esc` | _(native)_ cancel subagents |
+
+The toggle key (`<leader>v`) can be remapped in `tui.json` under the `agent-dock.toggle` command if you prefer a different one.
+
+> Why a toggle and not bare `↓`? In the parent session the prompt textarea captures arrow keys, and a plugin cannot blur the host prompt. `keymap.intercept` runs before the textarea, so once the dock is focused the arrows are ours. `↓` itself is also the prompt's history key, which made it an unreliable trigger.
 
 ## Architecture
 
-Clean Architecture, by analogy with
-[`opencode-auto-vision`](https://github.com/arttttt/opencode-auto-vision):
-dependencies point inward, the domain is pure, and the only thing that knows
-about the opencode SDK / TUI API is the composition root + adapters.
+Clean Architecture — dependencies point inward, the domain is pure, and the only place that knows about the opencode SDK / TUI API is the composition root + adapters.
 
 ```
 src/
-  domain.ts                              pure: Subagent, selection math, formatting
-  ports.ts                               SubagentStore, SessionNavigator, Logger
-  sdk.ts                                 SDK Session/SessionStatus -> domain Subagent
-  constants.ts                           plugin id, slot name, keybinds, limits
+  domain.ts                       pure: Subagent, selection math, formatting (unit-tested)
+  ports.ts                        SubagentStore, Logger contracts
+  sdk.ts                          SDK Session/SessionStatus -> domain Subagent
+  constants.ts                    plugin id, slot name, limits
   adapters/
-    opencode-subagent-store.ts           SubagentStore via client.session.children + events
-    opencode-navigator.ts                SessionNavigator via route.navigate
-    opencode-logger.ts                   Logger via client.app.log
+    opencode-subagent-store.ts    SubagentStore via client.session.children + events
+    opencode-logger.ts            Logger via client.app.log
   view/
-    Dock.tsx                             Solid render into the app_bottom slot
-  index.tsx                              composition root + tui entry ({ id, tui })
+    Dock.tsx                      Solid render into the app_bottom slot
+  index.tsx                       composition root: slot + inline nav (intercept)
 ```
-
-### Data flow
-
-`api.route.current` resolves the active parent session →
-`client.session.children({ sessionID })` returns its child sessions → each is
-projected to a domain `Subagent` and status is read from
-`api.state.session.status(id)` → `Dock` renders rows in `app_bottom`.
-Selection is owned by the root; `enter` calls `route.navigate("session", …)`.
-
-## Verify before release
-
-- [ ] `client.session.children` response shape (`result.data`) and namespace.
-- [ ] `Session.time.created` field name for elapsed-time origin.
-- [ ] `app_bottom` slot `SolidPlugin` shape from `@opentui/solid` (cast today).
-- [ ] Focus handling: pushing `agent-dock` mode reliably captures `j/k/enter`.
-- [ ] Map terminal subagent states to `done` vs `error` (status `undefined` is
-      treated as `done` for now).
 
 ## Develop
 
 ```sh
 npm install
+npm test        # vitest — domain unit tests
 npm run typecheck
 ```
 
-OpenCode runs on Bun and loads `.ts`/`.tsx` natively, so there is no build step
-for local file-plugin use.
+OpenCode runs on Bun and loads `.ts`/`.tsx` natively, so there is no build step for local file-plugin use:
+
+```jsonc
+{ "plugin": [["file:///absolute/path/to/opencode-agent-dock/src/index.tsx"]] }
+```
 
 ## License
 
