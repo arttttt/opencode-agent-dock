@@ -6,7 +6,10 @@ export const SERVICE = "agent-dock";
 export const LIMITS = {
   labelMax: 48,
   maxRows: 50,
+  /** OpenCode 1: how often the roster is re-read, which also ticks elapsed time. */
   pollMs: 300,
+  /** OpenCode 2: the roster is reactive, so this only ticks elapsed time. */
+  tickMs: 1000,
 } as const;
 
 /** The toggle command, the same on both hosts so a user's remap carries over. */

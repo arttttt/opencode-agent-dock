@@ -66,7 +66,42 @@ const rendered = createRoot((dispose) => {
   disposers.push(dispose);
   return renderers.map((render) => render({ theme: { current: tone } }) !== undefined);
 });
-// The dock polls: dispose it, as the host does on exit, so Bun can exit.
+// OpenCode 2 (@opencode/plugin 2.1.4 tui/context.d.ts): the same default's
+// `setup`, against a stub context, its slot claim rendered once.
+const v2 = { claims: [] as string[], layers: 0, rendered: [] as boolean[] };
+const claims: { render: (input: object) => unknown }[] = [];
+const context = {
+  data: { session: { get: () => undefined, family: () => [], status: () => "idle" } },
+  theme: { text: { base: "#ffffff", muted: "#888888", action: { primary: { base: "#00aaff" } } } },
+  keymap: { layer: () => void (v2.layers += 1) },
+  ui: {
+    router: { current: () => ({ type: "home" }), navigate: () => {} },
+    slot: (claim: { append?: string; render: (input: object) => unknown }) => {
+      v2.claims.push(`append:${claim.append}`);
+      claims.push(claim);
+      return () => {};
+    },
+  },
+};
+const cleanup = createRoot((dispose) => {
+  disposers.push(dispose);
+  const release = plugin.setup(context);
+  v2.rendered = claims.map((claim) => claim.render({}) !== undefined);
+  return release;
+});
+disposers.push(cleanup);
+
+// The dock polls (v1) and ticks (v2): dispose it, as the host does, so Bun can exit.
 for (const dispose of disposers) dispose();
 
-console.log(JSON.stringify({ exports: Object.keys(mod), id: plugin.id, tui: typeof plugin.tui, registered, rendered }));
+console.log(
+  JSON.stringify({
+    exports: Object.keys(mod),
+    id: plugin.id,
+    tui: typeof plugin.tui,
+    setup: typeof plugin.setup,
+    registered,
+    rendered,
+    v2,
+  }),
+);

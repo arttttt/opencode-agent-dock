@@ -64,19 +64,22 @@ describe("the published package", () => {
     expect(() => require.resolve("@opentui/solid")).toThrow();
   });
 
-  it("loads under the host's runtime, registers the dock and renders its slot", () => {
+  it("loads under the host's runtime, registers the dock and renders its slot, on both OpenCode generations", () => {
     const out = execFileSync(BUN, [join(ROOT, "test", "fixtures", "load-tui.ts"), entry], {
       cwd: ROOT,
       encoding: "utf8",
       timeout: 60_000,
     });
 
+    // One default object: OpenCode 1 calls `tui`, OpenCode 2 reads `id` + `setup`.
     expect(JSON.parse(out.trim().split("\n").at(-1) ?? "")).toEqual({
       exports: ["default"],
       id: "arttttt.agent-dock",
       tui: "function",
+      setup: "function",
       registered: { slots: ["app_bottom"], intercepts: 1, layers: ["agent-dock.toggle"] },
       rendered: [true],
+      v2: { claims: ["append:app"], layers: 2, rendered: [true] },
     });
   });
 });
