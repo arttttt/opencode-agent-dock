@@ -8,7 +8,7 @@
 //     the panel; native left/right between siblings updates it). `activeId`
 //     exposes that focused id for highlighting.
 
-import type { Session } from "@opencode-ai/sdk/v2";
+import type { Event, Session } from "@opencode-ai/sdk/v2";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { Subagent } from "../domain.js";
 import { sortSubagents } from "../domain.js";
@@ -35,6 +35,19 @@ function isArchived(session: Session): boolean {
   const archived = session.time.archived;
   return typeof archived === "number" && archived > 0;
 }
+
+/**
+ * The session events that change the roster, as OpenCode names them — a
+ * deleted session is "session.deleted". Checked against the SDK's Event union,
+ * so a name OpenCode does not publish fails the typecheck. The poll catches
+ * anything these miss, within LIMITS.pollMs.
+ */
+export const SESSION_EVENTS = [
+  "session.created",
+  "session.idle",
+  "session.updated",
+  "session.deleted",
+] as const satisfies readonly Event["type"][];
 
 export function createSubagentStore(api: TuiPluginApi, log: Logger): SubagentStore {
   const client = api.client as unknown as ChildrenClient;
@@ -95,12 +108,7 @@ export function createSubagentStore(api: TuiPluginApi, log: Logger): SubagentSto
     type: string,
     handler: () => void,
   ) => () => void;
-  const unsubs = [
-    subscribe("session.created", () => void refresh()),
-    subscribe("session.idle", () => void refresh()),
-    subscribe("session.updated", () => void refresh()),
-    subscribe("session.removed", () => void refresh()),
-  ];
+  const unsubs = SESSION_EVENTS.map((type) => subscribe(type, () => void refresh()));
 
   api.lifecycle.onDispose(() => {
     clearInterval(interval);
